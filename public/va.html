@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HeroSMS — Mon espace VA</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0e0e0e;color:#e8e8e8;font-family:'IBM Plex Sans',sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:1rem}
+  .card{background:#161616;border:1px solid #2a2a2a;border-radius:14px;padding:2rem;width:100%;max-width:480px}
+  .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem}
+  .logo{font-family:'IBM Plex Mono',monospace;font-size:15px;color:#a3e635;font-weight:600}
+  .bot-status{font-family:'IBM Plex Mono',monospace;font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid #2a2a2a;color:#555}
+  .bot-status.on{border-color:#22c55e;color:#22c55e;background:#0d2418}
+  .bot-status.off{border-color:#ef4444;color:#ef4444;background:#1c0a0a}
+
+  .pick-label{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#555;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px}
+  .pick-grid{display:flex;flex-direction:column;gap:8px;margin-bottom:1.5rem}
+  .pick-option{display:flex;align-items:center;justify-content:space-between;background:#0e0e0e;border:1px solid #2a2a2a;border-radius:10px;padding:14px 16px;cursor:pointer;transition:all .15s}
+  .pick-option:hover{border-color:#444}
+  .pick-option.selected{border-color:#a3e635;background:#111}
+  .pick-left{display:flex;align-items:center;gap:12px}
+  .pick-radio{width:18px;height:18px;border-radius:50%;border:2px solid #333;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:border-color .15s}
+  .pick-option.selected .pick-radio{border-color:#a3e635}
+  .pick-radio-dot{width:8px;height:8px;border-radius:50%;background:#a3e635;opacity:0;transition:opacity .15s}
+  .pick-option.selected .pick-radio-dot{opacity:1}
+  .pick-price{font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;color:#e8e8e8}
+  .pick-right{text-align:right}
+  .pick-stock{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#555}
+  .pick-badge{font-family:'IBM Plex Mono',monospace;font-size:10px;padding:2px 7px;border-radius:4px;background:#1a2208;color:#a3e635;border:1px solid #2a3a0a;margin-top:4px;display:inline-block}
+
+  .main-state{text-align:center;padding:1.5rem 0}
+  .state-icon{font-size:40px;margin-bottom:.75rem}
+  .state-label{font-size:13px;color:#555;margin-bottom:1.5rem;min-height:20px}
+  .number-display{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:600;color:#e8e8e8;margin-bottom:.5rem;min-height:30px;letter-spacing:1px}
+  .code-display{font-family:'IBM Plex Mono',monospace;font-size:52px;font-weight:600;color:#22c55e;letter-spacing:6px;margin:1rem 0;min-height:70px;display:flex;align-items:center;justify-content:center}
+  .code-label{font-size:12px;color:#22c55e;margin-bottom:1.5rem;opacity:0;transition:opacity .3s}
+  .code-label.visible{opacity:1}
+  .timer{font-family:'IBM Plex Mono',monospace;font-size:12px;color:#f59e0b;min-height:20px;margin-bottom:1rem}
+  .progress{height:3px;background:#1f1f1f;border-radius:2px;margin-bottom:1.5rem;overflow:hidden}
+  .progress-fill{height:100%;border-radius:2px;width:0%;transition:width 1s ease}
+  .state-loading .progress-fill{background:#3b82f6}
+  .state-waiting .progress-fill{background:#f59e0b}
+  .state-ok .progress-fill{background:#22c55e;width:100%!important}
+  .state-error .progress-fill{background:#ef4444;width:0%!important}
+
+  .actions{display:flex;gap:10px}
+  .btn-buy{flex:2;background:#a3e635;color:#000;border:none;border-radius:8px;padding:14px;font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .15s}
+  .btn-buy:hover{opacity:.85}
+  .btn-buy:disabled{opacity:.3;cursor:not-allowed}
+  .btn-reset{flex:1;background:transparent;color:#ef4444;border:1px solid #7f1d1d;border-radius:8px;padding:14px;font-family:'IBM Plex Mono',monospace;font-size:13px;cursor:pointer;transition:background .15s}
+  .btn-reset:hover{background:#1c0a0a}
+  .btn-reset:disabled{opacity:.3;cursor:not-allowed}
+
+  .notif{font-family:'IBM Plex Mono',monospace;font-size:12px;color:#ef4444;text-align:center;margin-top:1rem;min-height:20px}
+  .divider{height:1px;background:#1f1f1f;margin:1.25rem 0}
+  #kicked-screen{display:none;text-align:center}
+  #kicked-screen h2{font-family:'IBM Plex Mono',monospace;color:#ef4444;margin-bottom:8px}
+  #kicked-screen p{color:#555;font-size:13px}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  .pulsing{animation:pulse 1.5s infinite}
+</style>
+</head>
+<body>
+<div class="card" id="main-card">
+  <div class="top">
+    <div class="logo">// VA — Instagram US</div>
+    <div class="bot-status off" id="bot-badge">Bot OFF</div>
+  </div>
+
+  <div id="pick-section">
+    <div class="pick-label">Choisir le type de numéro</div>
+    <div class="pick-grid">
+      <div class="pick-option" id="opt-0" onclick="selectOption(0)">
+        <div class="pick-left">
+          <div class="pick-radio"><div class="pick-radio-dot"></div></div>
+          <div class="pick-price">0,077 $</div>
+        </div>
+        <div class="pick-right">
+          <div class="pick-stock">~41 499 pièces</div>
+          <div class="pick-badge">Le moins cher</div>
+        </div>
+      </div>
+      <div class="pick-option" id="opt-1" onclick="selectOption(1)">
+        <div class="pick-left">
+          <div class="pick-radio"><div class="pick-radio-dot"></div></div>
+          <div class="pick-price">0,1075 $</div>
+        </div>
+        <div class="pick-right">
+          <div class="pick-stock">~41 549 pièces</div>
+        </div>
+      </div>
+      <div class="pick-option" id="opt-2" onclick="selectOption(2)">
+        <div class="pick-left">
+          <div class="pick-radio"><div class="pick-radio-dot"></div></div>
+          <div class="pick-price">0,1104 $</div>
+        </div>
+        <div class="pick-right">
+          <div class="pick-stock">~41 599 pièces</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="main-state">
+    <div class="state-icon" id="state-icon">📱</div>
+    <div class="number-display" id="number-display"></div>
+    <div class="code-display" id="code-display"></div>
+    <div class="code-label" id="code-label">Copiez ce code sur Instagram</div>
+    <div class="timer pulsing" id="timer"></div>
+    <div class="progress" id="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+    <div class="state-label" id="state-label">Sélectionnez un type de numéro ci-dessus</div>
+  </div>
+
+  <div class="actions">
+    <button class="btn-buy" id="btn-buy" onclick="buyNumber()" disabled>Acheter ce numéro</button>
+    <button class="btn-reset" id="btn-reset" onclick="cancelNumber()" disabled>Annuler / Reset</button>
+  </div>
+  <div class="notif" id="notif"></div>
+</div>
+
+<div class="card" id="kicked-screen">
+  <h2>Déconnecté</h2>
+  <p>Vous avez été déconnecté par l'administrateur.</p>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const OPTIONS = [
+  { price: 0.077,  label: '0,077 $'  },
+  { price: 0.1075, label: '0,1075 $' },
+  { price: 0.1104, label: '0,1104 $' },
+];
+
+let selectedOption = null;
+let botOn = false;
+let hasNumber = false;
+let timerInterval = null;
+let elapsed = 0;
+
+socket.emit('login', { role: 'va', password: prompt('Mot de passe :') || '' });
+
+socket.on('login_ok', ({ botEnabled }) => setBotState(botEnabled));
+socket.on('login_error', () => { alert('Mot de passe incorrect'); location.href = '/'; });
+socket.on('bot_state', ({ enabled }) => setBotState(enabled));
+
+function setBotState(enabled) {
+  botOn = enabled;
+  const badge = document.getElementById('bot-badge');
+  badge.textContent = enabled ? 'Bot ON' : 'Bot OFF';
+  badge.className = 'bot-status ' + (enabled ? 'on' : 'off');
+  if (!hasNumber) document.getElementById('btn-buy').disabled = !(enabled && selectedOption !== null);
+  if (!enabled) { document.getElementById('state-icon').textContent = '🔒'; document.getElementById('state-label').textContent = 'Bot désactivé par l\'admin'; }
+}
+
+function selectOption(idx) {
+  if (hasNumber) return;
+  selectedOption = idx;
+  document.querySelectorAll('.pick-option').forEach((el, i) => el.classList.toggle('selected', i === idx));
+  document.getElementById('btn-buy').disabled = !botOn;
+  document.getElementById('state-icon').textContent = '📱';
+  document.getElementById('state-label').textContent = OPTIONS[idx].label + ' sélectionné — prêt à acheter';
+}
+
+function buyNumber() {
+  if (!botOn || selectedOption === null) return;
+  socket.emit('buy_number', { maxPrice: OPTIONS[selectedOption].price });
+  document.getElementById('btn-buy').disabled = true;
+  document.getElementById('btn-reset').disabled = false;
+  lockOptions(true);
+}
+
+function cancelNumber() {
+  socket.emit('cancel_number');
+  clearTimerInterval();
+  hasNumber = false;
+  lockOptions(false);
+}
+
+function lockOptions(locked) {
+  document.querySelectorAll('.pick-option').forEach(el => {
+    el.style.pointerEvents = locked ? 'none' : '';
+    el.style.opacity = locked ? '.4' : '';
+  });
+  if (!locked && selectedOption !== null) {
+    const sel = document.getElementById('opt-' + selectedOption);
+    sel.style.opacity = ''; sel.style.pointerEvents = '';
+  }
+}
+
+socket.on('number_received', ({ number }) => {
+  hasNumber = true;
+  document.getElementById('number-display').textContent = number;
+  startTimer();
+});
+
+socket.on('code_received', ({ code }) => {
+  clearTimerInterval();
+  document.getElementById('code-display').textContent = code;
+  document.getElementById('code-label').classList.add('visible');
+  document.getElementById('timer').textContent = '';
+  hasNumber = false;
+  lockOptions(false);
+});
+
+socket.on('status', ({ state, info }) => setState(state, info));
+
+socket.on('reset', () => {
+  clearTimerInterval();
+  hasNumber = false;
+  document.getElementById('number-display').textContent = '';
+  document.getElementById('code-display').textContent = '';
+  document.getElementById('code-label').classList.remove('visible');
+  document.getElementById('timer').textContent = '';
+  document.getElementById('progress-fill').style.width = '0%';
+  document.getElementById('btn-buy').disabled = !(botOn && selectedOption !== null);
+  document.getElementById('btn-reset').disabled = false;
+  lockOptions(false);
+});
+
+socket.on('error_msg', (msg) => {
+  document.getElementById('notif').textContent = msg;
+  setTimeout(() => document.getElementById('notif').textContent = '', 4000);
+  lockOptions(false);
+  document.getElementById('btn-buy').disabled = !(botOn && selectedOption !== null);
+});
+
+socket.on('kicked', () => {
+  document.getElementById('main-card').style.display = 'none';
+  document.getElementById('kicked-screen').style.display = 'block';
+});
+
+function setState(state, info) {
+  const icons = { idle:'📱', loading:'⏳', waiting:'📡', ok:'✅', error:'❌', disabled:'🔒' };
+  document.getElementById('state-icon').textContent = icons[state] || '📱';
+  document.getElementById('state-label').textContent = info || '';
+  document.getElementById('progress-bar').className = 'progress state-' + state;
+  const pct = { idle:0, loading:15, waiting:40, ok:100, error:0 };
+  if (pct[state] !== undefined) document.getElementById('progress-fill').style.width = pct[state] + '%';
+  if (state === 'ok' || state === 'error') { document.getElementById('btn-buy').disabled = !botOn || selectedOption === null; }
+}
+
+function startTimer() {
+  elapsed = 0; clearTimerInterval();
+  timerInterval = setInterval(() => {
+    elapsed += 1000;
+    const rem = 20*60*1000 - elapsed;
+    if (rem <= 0) { clearTimerInterval(); return; }
+    const m = Math.floor(rem/60000), s = Math.floor((rem%60000)/1000);
+    document.getElementById('timer').textContent = `⏱ ${m}:${String(s).padStart(2,'0')} restant`;
+    document.getElementById('progress-fill').style.width = Math.min(40 + (elapsed/(20*60*1000))*55, 90) + '%';
+  }, 1000);
+}
+
+function clearTimerInterval() { if (timerInterval) { clearInterval(timerInterval); timerInterval = null; } }
+</script>
+</body>
+</html>

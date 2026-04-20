@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HeroSMS — Admin</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0e0e0e;color:#e8e8e8;font-family:'IBM Plex Sans',sans-serif;min-height:100vh}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;border-bottom:1px solid #1f1f1f;background:#111}
+  .logo{font-family:'IBM Plex Mono',monospace;font-size:15px;color:#a3e635;font-weight:600}
+  .top-right{display:flex;align-items:center;gap:12px}
+  .balance{font-family:'IBM Plex Mono',monospace;font-size:13px;color:#a3e635}
+  .btn-toggle{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;padding:8px 20px;border-radius:8px;border:none;cursor:pointer;transition:all .15s}
+  .btn-toggle.on{background:#22c55e;color:#000}
+  .btn-toggle.off{background:#ef4444;color:#fff}
+  .btn-refresh{font-family:'IBM Plex Mono',monospace;font-size:12px;padding:7px 14px;border-radius:6px;border:1px solid #2a2a2a;background:transparent;color:#888;cursor:pointer}
+  .btn-refresh:hover{background:#1f1f1f;color:#e8e8e8}
+
+  .content{padding:24px}
+
+  /* STATS */
+  .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:24px}
+  .stat{background:#161616;border:1px solid #1f1f1f;border-radius:10px;padding:16px}
+  .stat-lbl{font-size:11px;color:#555;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+  .stat-val{font-size:28px;font-weight:500;font-family:'IBM Plex Mono',monospace;color:#e8e8e8}
+  .stat-val.green{color:#22c55e}
+  .stat-val.amber{color:#f59e0b}
+  .stat-val.red{color:#ef4444}
+
+  /* BOT STATE BANNER */
+  .banner{padding:10px 16px;border-radius:8px;margin-bottom:20px;font-family:'IBM Plex Mono',monospace;font-size:13px;display:flex;align-items:center;gap:8px}
+  .banner.on{background:#0d2418;border:1px solid #14532d;color:#22c55e}
+  .banner.off{background:#1c0a0a;border:1px solid #7f1d1d;color:#ef4444}
+  .dot{width:8px;height:8px;border-radius:50%}
+  .dot.on{background:#22c55e}
+  .dot.off{background:#ef4444}
+
+  /* TABLE VAS */
+  .section-title{font-family:'IBM Plex Mono',monospace;font-size:12px;color:#555;text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px}
+  .va-list{display:flex;flex-direction:column;gap:8px}
+  .va-row{background:#161616;border:1px solid #1f1f1f;border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px}
+  .va-row.has-number{border-color:#f59e0b}
+  .va-avatar{width:36px;height:36px;border-radius:50%;background:#1f1f1f;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:13px;color:#555;flex-shrink:0}
+  .va-info{flex:1}
+  .va-id{font-family:'IBM Plex Mono',monospace;font-size:12px;color:#888}
+  .va-number{font-family:'IBM Plex Mono',monospace;font-size:13px;color:#f59e0b;margin-top:2px}
+  .va-time{font-size:11px;color:#444;margin-top:2px}
+  .va-badge{font-family:'IBM Plex Mono',monospace;font-size:10px;padding:3px 8px;border-radius:4px;font-weight:600}
+  .va-badge.active{background:#1c1200;color:#f59e0b;border:1px solid #3d2a00}
+  .va-badge.idle{background:#0e0e0e;color:#444;border:1px solid #1f1f1f}
+  .btn-kick{font-family:'IBM Plex Mono',monospace;font-size:11px;padding:5px 10px;border-radius:6px;border:1px solid #7f1d1d;background:transparent;color:#ef4444;cursor:pointer}
+  .btn-kick:hover{background:#1c0a0a}
+
+  .empty-state{text-align:center;padding:3rem;color:#333;font-family:'IBM Plex Mono',monospace;font-size:13px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">// Admin — HeroSMS VA</div>
+  <div class="top-right">
+    <div class="balance">Solde : <span id="lbl-balance">—</span></div>
+    <button class="btn-refresh" onclick="refreshBalance()">Solde ↻</button>
+    <button class="btn-toggle on" id="btn-toggle" onclick="toggleBot()">Bot ON</button>
+  </div>
+</div>
+
+<div class="content">
+  <div class="banner on" id="banner">
+    <div class="dot on" id="banner-dot"></div>
+    <span id="banner-text">Bot actif — les VAs peuvent acheter des numéros</span>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat"><div class="stat-lbl">VAs connectés</div><div class="stat-val green" id="cnt-connected">0</div></div>
+    <div class="stat"><div class="stat-lbl">Numéros actifs</div><div class="stat-val amber" id="cnt-numbers">0</div></div>
+    <div class="stat"><div class="stat-lbl">Solde</div><div class="stat-val" id="cnt-balance">—</div></div>
+  </div>
+
+  <div class="section-title">VAs connectés</div>
+  <div class="va-list" id="va-list">
+    <div class="empty-state">Aucun VA connecté</div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
+
+socket.emit('login', { role: 'admin', password: prompt('Mot de passe admin :') || '' });
+
+socket.on('login_ok', () => {
+  refreshBalance();
+});
+
+socket.on('login_error', () => {
+  alert('Mot de passe incorrect');
+  location.href = '/';
+});
+
+socket.on('admin_state', ({ botEnabled, vas, total }) => {
+  updateBotUI(botEnabled);
+  renderVAs(vas);
+  document.getElementById('cnt-connected').textContent = total;
+  document.getElementById('cnt-numbers').textContent = vas.filter(v => v.hasNumber).length;
+});
+
+socket.on('bot_state', ({ enabled }) => updateBotUI(enabled));
+
+function toggleBot() { socket.emit('toggle_bot'); }
+
+function updateBotUI(enabled) {
+  const btn = document.getElementById('btn-toggle');
+  const banner = document.getElementById('banner');
+  const dot = document.getElementById('banner-dot');
+  const text = document.getElementById('banner-text');
+  btn.textContent = enabled ? 'Bot ON' : 'Bot OFF';
+  btn.className = 'btn-toggle ' + (enabled ? 'on' : 'off');
+  banner.className = 'banner ' + (enabled ? 'on' : 'off');
+  dot.className = 'dot ' + (enabled ? 'on' : 'off');
+  text.textContent = enabled ? 'Bot actif — les VAs peuvent acheter des numéros' : 'Bot désactivé — les VAs ne peuvent pas acheter';
+}
+
+function renderVAs(vas) {
+  const list = document.getElementById('va-list');
+  if (!vas.length) { list.innerHTML = '<div class="empty-state">Aucun VA connecté</div>'; return; }
+  list.innerHTML = vas.map((va, i) => {
+    const joined = new Date(va.joinedAt).toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'});
+    return `
+      <div class="va-row ${va.hasNumber ? 'has-number' : ''}">
+        <div class="va-avatar">VA${i+1}</div>
+        <div class="va-info">
+          <div class="va-id">${va.id.slice(0,8)}...</div>
+          ${va.hasNumber ? `<div class="va-number">+${va.number}</div>` : ''}
+          <div class="va-time">Connecté à ${joined}</div>
+        </div>
+        <div class="va-badge ${va.hasNumber ? 'active' : 'idle'}">${va.hasNumber ? 'Numéro actif' : 'Libre'}</div>
+        <button class="btn-kick" onclick="kick('${va.id}')">Kick</button>
+      </div>
+    `;
+  }).join('');
+}
+
+function kick(id) {
+  if (confirm('Déconnecter ce VA ?')) socket.emit('kick_va', id);
+}
+
+async function refreshBalance() {
+  try {
+    const r = await fetch('/api/balance').then(r => r.json());
+    if (r.balance) {
+      const val = '$' + parseFloat(r.balance).toFixed(4);
+      document.getElementById('lbl-balance').textContent = val;
+      document.getElementById('cnt-balance').textContent = val;
+    }
+  } catch(e) {}
+}
+</script>
+</body>
+</html>
