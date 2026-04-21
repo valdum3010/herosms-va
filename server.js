@@ -21,7 +21,7 @@ const POOL_BASE = 'https://api.smspool.net';
 const HERO_SERVICE = 'ig';
 const HERO_COUNTRY = '187'; // USA
 const POOL_COUNTRY = 'US';
-const POOL_SERVICE = 'Instagram';
+const POOL_SERVICE = 'instagram';
 
 // ── HORAIRE AUTO 19h-23h ──────────────────────────────────────
 function isWithinSchedule() {
@@ -59,7 +59,7 @@ async function heroApi(action, params = {}) {
 // ── API SMSPOOL ───────────────────────────────────────────────
 async function poolApi(endpoint, params = {}) {
   const url = new URL(POOL_BASE + endpoint);
-  url.searchParams.set('api_key', SMSPOOL_API_KEY);
+  url.searchParams.set('key', SMSPOOL_API_KEY);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
   const resp = await fetch(url.toString());
   return await resp.json();
