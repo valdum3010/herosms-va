@@ -23,11 +23,11 @@ const HERO_COUNTRY = '187'; // USA
 const POOL_COUNTRY = 'US';
 const POOL_SERVICE = 'Instagram';
 
-// ── HORAIRE AUTO 20h-22h ──────────────────────────────────────
+// ── HORAIRE AUTO 19h-23h ──────────────────────────────────────
 function isWithinSchedule() {
   const frTime = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
   const h = frTime.getHours();
-  return h >= 20 && h < 22;
+  return h >= 19 && h < 23;
 }
 
 // ── ÉTAT GLOBAL ───────────────────────────────────────────────
@@ -85,8 +85,8 @@ async function buyNumber(provider, maxPrice) {
     if (res.success === 1) {
       return { ok: true, activationId: res.order_id, number: res.number, provider: 'smspool' };
     }
-    if (res.message) return { ok: false, reason: 'Erreur SMSPool : ' + res.message };
-    return { ok: false, reason: 'Erreur SMSPool.' };
+    const errMsg = res.message || res.error || JSON.stringify(res);
+return { ok: false, reason: 'Erreur SMSPool : ' + errMsg };
   }
 }
 
