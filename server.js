@@ -80,12 +80,14 @@ async function buyNumber(provider, maxPrice) {
   }
 
   if (provider === 'smspool') {
+    console.log('SMSPool achat — pays:', POOL_COUNTRY, 'service:', POOL_SERVICE);
     const res = await poolApi('/purchase/sms', { country: POOL_COUNTRY, service: POOL_SERVICE });
+    console.log('SMSPool réponse:', JSON.stringify(res));
     if (res.success === 1) {
       return { ok: true, activationId: res.order_id, number: res.number, provider: 'smspool' };
     }
     const errMsg = res.message || res.error || JSON.stringify(res);
-return { ok: false, reason: 'Erreur SMSPool : ' + errMsg };
+    return { ok: false, reason: 'Erreur SMSPool : ' + errMsg };
   }
 }
 
