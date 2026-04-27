@@ -12,12 +12,14 @@ const io = new Server(server);
 const PORT = process.env.PORT || 3000;
 const HERO_API_KEY = process.env.HERO_API_KEY;
 const SMSPOOL_API_KEY = process.env.SMSPOOL_API_KEY;
+const DIDDY_API_KEY = process.env.DIDDY_API_KEY;
 const VA_PASSWORD = process.env.VA_PASSWORD || 'changeme123';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin_secret';
 const NB_SLOTS = parseInt(process.env.NB_SLOTS) || 10;
 
 const HERO_BASE = 'https://hero-sms.com/stubs/handler_api.php';
 const POOL_BASE = 'https://api.smspool.net/stubs/handler_api';
+const DIDDY_BASE = 'https://api.diddysms.com/v1';
 const HERO_SERVICE = 'ig';
 const HERO_COUNTRY = '187';
 const POOL_SERVICE = 'ig';
@@ -71,21 +73,39 @@ async function buyNumber(provider, maxPrice) {
       const parts = res.split(':');
       return { ok: true, activationId: parts[1], number: parts[2], provider: 'hero' };
     }
-    if (res === 'NO_NUMBERS') return { ok: false, reason: 'Aucun numéro disponible sur HeroSMS.' };
+    if (res === 'NO_NUMBERS') return { ok: false, reason: 'Aucun numero disponible sur HeroSMS.' };
     if (res === 'NO_BALANCE') return { ok: false, reason: 'Solde HeroSMS insuffisant.' };
     return { ok: false, reason: 'Erreur HeroSMS : ' + res };
   }
   if (provider === 'smspool') {
-    console.log('SMSPool achat — pays:', POOL_COUNTRY, 'service:', POOL_SERVICE);
+    console.log('SMSPool achat...');
     const res = await poolApi('getNumber', { service: POOL_SERVICE, country: POOL_COUNTRY });
-    console.log('SMSPool réponse:', res);
+    console.log('SMSPool reponse:', res);
     if (res.startsWith('ACCESS_NUMBER:')) {
       const parts = res.split(':');
       return { ok: true, activationId: parts[1], number: parts[2], provider: 'smspool' };
     }
-    if (res === 'NO_NUMBERS') return { ok: false, reason: 'Aucun numéro disponible sur SMSPool.' };
+    if (res === 'NO_NUMBERS') return { ok: false, reason: 'Aucun numero disponible sur SMSPool.' };
     if (res === 'NO_BALANCE') return { ok: false, reason: 'Solde SMSPool insuffisant.' };
     return { ok: false, reason: 'Erreur SMSPool : ' + res };
+  }
+  if (provider === 'diddy') {
+    try {
+      console.log('DiddySMS achat en cours...');
+      const resp = await fetch(DIDDY_BASE + '/orders', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + DIDDY_API_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ service: 'instagram' })
+      });
+      const res = await resp.json();
+      console.log('DiddySMS reponse:', JSON.stringify(res));
+      if (res.order && res.order.id) {
+        return { ok: true, activationId: String(res.order.id), number: res.order.number, provider: 'diddy' };
+      }
+      return { ok: false, reason: 'Erreur DiddySMS : ' + JSON.stringify(res) };
+    } catch(e) {
+      return { ok: false, reason: 'Erreur DiddySMS reseau : ' + e.message };
+    }
   }
 }
 
@@ -100,12 +120,26 @@ async function checkCode(provider, activationId) {
     if (res.startsWith('STATUS_OK:')) return { ok: true, code: res.split(':')[1] };
     return { ok: false };
   }
+  if (provider === 'diddy') {
+    try {
+      const resp = await fetch(DIDDY_BASE + '/orders/' + activationId, {
+        headers: { 'Authorization': 'Bearer ' + DIDDY_API_KEY }
+      });
+      const res = await resp.json();
+      if (res.order && res.order.sms_code) return { ok: true, code: res.order.sms_code };
+      return { ok: false };
+    } catch(e) { return { ok: false }; }
+  }
 }
 
 async function cancelNumber(provider, activationId) {
   try {
     if (provider === 'hero') await heroApi('setStatus', { id: activationId, status: 8 });
     if (provider === 'smspool') await poolApi('setStatus', { id: activationId, status: 8 });
+    if (provider === 'diddy') await fetch(DIDDY_BASE + '/orders/' + activationId + '/cancel', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + DIDDY_API_KEY }
+    });
   } catch(e) {}
 }
 
@@ -139,8 +173,8 @@ io.on('connection', (socket) => {
 
   socket.on('take_slot', (slotId) => {
     if (socket.role !== 'va') return;
-    if (socket.slotId) { socket.emit('slot_error', 'Vous avez déjà le slot ' + socket.slotId); return; }
-    if (slots[slotId] !== null) { socket.emit('slot_error', 'Slot déjà pris.'); return; }
+    if (socket.slotId) { socket.emit('slot_error', 'Vous avez deja le slot ' + socket.slotId); return; }
+    if (slots[slotId] !== null) { socket.emit('slot_error', 'Slot deja pris.'); return; }
     slots[slotId] = { socketId: socket.id, provider: null, number: null, activationId: null, startTime: null, interval: null };
     socket.slotId = slotId;
     socket.emit('slot_taken', { slotId });
@@ -149,13 +183,14 @@ io.on('connection', (socket) => {
 
   socket.on('buy_number', async ({ provider, maxPrice } = {}) => {
     if (socket.role !== 'va') return;
-    if (!botEnabled) { socket.emit('error_msg', 'Bot désactivé — disponible de 20h à 22h.'); return; }
-    if (!socket.slotId) { socket.emit('error_msg', 'Prenez d\'abord un slot.'); return; }
+    if (!botEnabled) { socket.emit('error_msg', 'Bot desactive - disponible de 20h a 22h.'); return; }
+    if (!socket.slotId) { socket.emit('error_msg', 'Prenez un slot.'); return; }
     const slot = slots[socket.slotId];
-    if (!slot || slot.activationId) { socket.emit('error_msg', 'Numéro déjà actif.'); return; }
+    if (!slot || slot.activationId) { socket.emit('error_msg', 'Numero deja actif.'); return; }
     if (!provider) { socket.emit('error_msg', 'Choisissez un fournisseur.'); return; }
 
-    socket.emit('status', { state: 'loading', info: 'Achat sur ' + (provider === 'hero' ? 'HeroSMS' : 'SMSPool') + '...' });
+    const providerName = provider === 'hero' ? 'HeroSMS' : provider === 'smspool' ? 'SMSPool' : 'DiddySMS';
+    socket.emit('status', { state: 'loading', info: 'Achat sur ' + providerName + '...' });
 
     try {
       const result = await buyNumber(provider, maxPrice);
@@ -173,7 +208,7 @@ io.on('connection', (socket) => {
       }
     } catch(e) {
       console.log('Erreur buy_number:', e.message);
-      socket.emit('status', { state: 'error', info: 'Erreur réseau : ' + e.message });
+      socket.emit('status', { state: 'error', info: 'Erreur reseau : ' + e.message });
     }
   });
 
@@ -185,7 +220,7 @@ io.on('connection', (socket) => {
       if (slot.activationId) await cancelNumber(slot.provider, slot.activationId);
       slot.activationId = null; slot.number = null; slot.provider = null; slot.interval = null;
     }
-    socket.emit('status', { state: 'idle', info: 'Annulé — prêt pour un nouveau numéro.' });
+    socket.emit('status', { state: 'idle', info: 'Annule - pret pour un nouveau numero.' });
     socket.emit('reset');
     broadcastAll();
   });
@@ -242,7 +277,7 @@ function startPolling(socket) {
       clearInterval(interval);
       await cancelNumber(slot.provider, slot.activationId);
       slot.activationId = null; slot.number = null; slot.provider = null;
-      socket.emit('status', { state: 'error', info: 'Temps écoulé — numéro annulé automatiquement.' });
+      socket.emit('status', { state: 'error', info: 'Temps ecoule - numero annule automatiquement.' });
       socket.emit('reset');
       broadcastAll();
       return;
@@ -252,7 +287,7 @@ function startPolling(socket) {
       if (result.ok) {
         clearInterval(interval);
         socket.emit('code_received', { code: result.code });
-        socket.emit('status', { state: 'ok', info: 'Code reçu !' });
+        socket.emit('status', { state: 'ok', info: 'Code recu !' });
         await completeNumber(slot.provider, slot.activationId);
         slot.activationId = null; slot.number = null; slot.provider = null;
         broadcastAll();
@@ -307,4 +342,4 @@ app.get('/api/balance', async (req, res) => {
   } catch(e) { res.json({ hero: null, smspool: null }); }
 });
 
-server.listen(PORT, () => console.log(`HeroSMS VA — port ${PORT} — ${NB_SLOTS} slots`));
+server.listen(PORT, () => console.log('HeroSMS VA - port ' + PORT + ' - ' + NB_SLOTS + ' slots'));
