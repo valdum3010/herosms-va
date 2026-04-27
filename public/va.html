@@ -295,7 +295,7 @@ function selectOption(idx) {
 }
 
 function updateBuyBtn() {
-  const ready = botOn && selectedProvider && (selectedProvider === 'smspool' || selectedOption !== null);
+  const ready = botOn && selectedProvider && (selectedProvider === 'smspool' || selectedProvider === 'diddy' || selectedOption !== null);
   document.getElementById('btn-buy').disabled = !ready || locked;
 }
 
