@@ -100,7 +100,7 @@ async function buyNumber(provider, maxPrice) {
       const res = await resp.json();
       console.log('DiddySMS reponse:', JSON.stringify(res));
       if (res.order && res.order.id) {
-        return { ok: true, activationId: String(res.order.id), number: res.order.number, provider: 'diddy' };
+        return { ok: true, activationId: String(res.order.id), number: res.order.phone_number, provider: 'diddy' };
       }
       return { ok: false, reason: 'Erreur DiddySMS : ' + JSON.stringify(res) };
     } catch(e) {
