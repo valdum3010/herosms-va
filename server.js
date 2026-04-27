@@ -95,7 +95,7 @@ async function buyNumber(provider, maxPrice) {
       const resp = await fetch(DIDDY_BASE + '/orders', {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + DIDDY_API_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ service: 'instagram' })
+        body: JSON.stringify({ service: 'Instagram' })
       });
       const res = await resp.json();
       console.log('DiddySMS reponse:', JSON.stringify(res));
