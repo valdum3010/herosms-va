@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HeroSMS — Connexion</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0e0e0e;color:#e8e8e8;font-family:'IBM Plex Sans',sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh}
+  .card{background:#161616;border:1px solid #2a2a2a;border-radius:14px;padding:2.5rem;width:100%;max-width:400px}
+  h1{font-family:'IBM Plex Mono',monospace;font-size:22px;color:#a3e635;margin-bottom:4px}
+  .sub{font-size:13px;color:#555;margin-bottom:2rem}
+  label{display:block;font-size:11px;color:#555;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+  input,select{width:100%;background:#0e0e0e;border:1px solid #2a2a2a;border-radius:8px;padding:11px 14px;color:#e8e8e8;font-family:'IBM Plex Mono',monospace;font-size:13px;outline:none;margin-bottom:1.25rem;transition:border-color .15s}
+  input:focus,select:focus{border-color:#a3e635}
+  select option{background:#1a1a1a}
+  .btn{width:100%;background:#a3e635;color:#000;border:none;border-radius:8px;padding:12px;font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .15s}
+  .btn:hover{opacity:.85}
+  .err{color:#ef4444;font-size:13px;font-family:'IBM Plex Mono',monospace;margin-top:1rem;text-align:center;min-height:20px}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>// HeroSMS VA</h1>
+  <div class="sub">Connectez-vous pour accéder à votre espace</div>
+  <label>Rôle</label>
+  <select id="role">
+    <option value="va">VA — Agent</option>
+    <option value="admin">Admin</option>
+  </select>
+  <label>Mot de passe</label>
+  <input type="password" id="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()" />
+  <button class="btn" onclick="login()">Connexion →</button>
+  <div class="err" id="err"></div>
+</div>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const socket = io();
+  function login() {
+    const role = document.getElementById('role').value;
+    const password = document.getElementById('password').value;
+    if (!password) { document.getElementById('err').textContent = 'Entrez le mot de passe'; return; }
+    socket.emit('login', { role, password });
+  }
+  socket.on('login_ok', ({ role }) => {
+    window.location.href = role === 'admin' ? '/admin' : '/va';
+    sessionStorage.setItem('role', role);
+    sessionStorage.setItem('auth', '1');
+  });
+  socket.on('login_error', (msg) => {
+    document.getElementById('err').textContent = msg;
+  });
+</script>
+</body>
+</html>
