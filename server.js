@@ -26,7 +26,7 @@ const BOWER_BASE = 'https://smsbower.app/stubs/handler_api.php';
 function isWithinSchedule() {
   const frTime = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
   const h = frTime.getHours();
-  return h >= 12 && h < 22;
+  return h >= 12 && h < 3;
 }
 
 let adminOverride = null;
