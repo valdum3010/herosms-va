@@ -116,7 +116,7 @@ async function buyNumber(provider, maxPrice) {
     return { ok: false, reason: 'Erreur SMSBower : ' + res };
   }
   if (provider === 'getatext') {
-    const res = await getatextApi('getNumber', { service: 'instagram', country: '187', maxPrice: maxPrice || 0.50 });
+    const res = await getatextApi('getNumber', { service: 'instagram/threads', country: '187', maxPrice: maxPrice || 0.50 });
     console.log('GetAText achat reponse:', res);
     if (res.startsWith('ACCESS_NUMBER:')) {
       const parts = res.split(':');
